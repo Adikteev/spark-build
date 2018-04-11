@@ -46,12 +46,14 @@ RUN apt-get update \
                python-pip
     && rm -rf /var/lib/apt/lists/* /usr/share/doc
 
+RUN apt-get install -y cython
+
 RUN packages=' \
       numpy==1.14.2 \
       xgboost==0.7.post4 \
       scikit-learn==0.19.1 \
       hyperopt==0.1 \
-      pyarrow==0.8.0 \
+      pyarrow==0.9.0 \
       pandas==0.22.0 \
       networkx==1.11 \
       boto3 \
