@@ -36,7 +36,7 @@ $(SPARK_DIR):
 prod-dist: $(SPARK_DIR)
 	pushd $(SPARK_DIR)
 	rm -rf spark-*.tgz
-	./dev/make-distribution.sh --tgz -Pmesos "-Phadoop-$(HADOOP_VERSION)" -Pnetlib-lgpl -Psparkr -Phive -Phive-thriftserver -DskipTests
+	./dev/make-distribution.sh --tgz -Pmesos "-Phadoop-$(HADOOP_VERSION)" -Pnetlib-lgpl -Psparkr -Phive -Phive-thriftserver -DskipTests -Phadoop-cloud
 	filename=`ls spark-*.tgz`
 	rm -rf $(DIST_DIR)
 	mkdir -p $(DIST_DIR)
@@ -122,11 +122,11 @@ test-jar-checksum:
 	md5sum checksums | cut -d ' ' -f1 > test-jar-checksum
 
 MD5SUM ?= $(shell cat test-jar-checksum)
-DCOS_SPARK_TEST_JAR_URL ?= https://infinity-artifacts.s3.amazonaws.com/autodelete7d/spark/jars/dcos-spark-scala-tests-assembly-0.2-$(MD5SUM).jar 
+DCOS_SPARK_TEST_JAR_URL ?= https://infinity-artifacts.s3.amazonaws.com/autodelete7d/spark/jars/dcos-spark-scala-tests-assembly-0.2-$(MD5SUM).jar
 DCOS_SPARK_TEST_JAR_PATH ?= $(ROOT_DIR)/dcos-spark-scala-tests-assembly-0.2-SNAPSHOT.jar
 $(DCOS_SPARK_TEST_JAR_PATH): test-jar-checksum
-	if [ ! -f dcos-spark-scala-tests-assembly-0.2-SNAPSHOT.jar ]; then	
-		if wget --spider $(DCOS_SPARK_TEST_JAR_URL) 2>/dev/null; then 	
+	if [ ! -f dcos-spark-scala-tests-assembly-0.2-SNAPSHOT.jar ]; then
+		if wget --spider $(DCOS_SPARK_TEST_JAR_URL) 2>/dev/null; then
 			wget $(DCOS_SPARK_TEST_JAR_URL)
 		else
 			cd tests/jobs/scala
