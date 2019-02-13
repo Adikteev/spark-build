@@ -8,7 +8,7 @@ AWS_REGION ?= us-west-2
 S3_BUCKET ?= infinity-artifacts
 # Default to putting artifacts under a random directory, which will get cleaned up automatically:
 S3_PREFIX ?= autodelete7d/spark/test-`date +%Y%m%d-%H%M%S`-`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1`
-SPARK_REPO_URL ?= https://github.com/mesosphere/spark
+SPARK_REPO_URL ?= git@github.com:apache/spark.git#v2.4.0
 
 .ONESHELL:
 SHELL := /bin/bash
@@ -28,12 +28,14 @@ manifest-dist:
 	wget $(SPARK_DIST_URI)
 	popd
 
+root-dir:
+	echo $(ROOT_DIR)
+
 HADOOP_VERSION ?= $(shell jq ".default_spark_dist.hadoop_version" "$(ROOT_DIR)/manifest.json")
 SPARK_DIR ?= $(ROOT_DIR)/spark
-$(SPARK_DIR):
-	git clone $(SPARK_REPO_URL) $(SPARK_DIR)
 
-prod-dist: $(SPARK_DIR)
+prod-dist:
+	git clone $(SPARK_REPO_URL) $(SPARK_DIR)
 	pushd $(SPARK_DIR)
 	rm -rf spark-*.tgz
 	./dev/make-distribution.sh --tgz -Pmesos "-Phadoop-$(HADOOP_VERSION)" -Pnetlib-lgpl -Psparkr -Phive -Phive-thriftserver -DskipTests -Phadoop-cloud
