@@ -1,14 +1,15 @@
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUILD_DIR := $(ROOT_DIR)/build
-DIST_DIR := $(BUILD_DIR)/dist
+DIST_DIR := $(BUILD_DIR)/distrib
 GIT_COMMIT := $(shell git rev-parse HEAD)
 
-SPARK_DEV_DOCKER_IMAGE ?= mesosphere/spark-dev
+SPARK_DEV_DOCKER_IMAGE ?= jenkins.aktv.io:5000/spark-dev
 AWS_REGION ?= us-west-2
 S3_BUCKET ?= infinity-artifacts
 # Default to putting artifacts under a random directory, which will get cleaned up automatically:
 S3_PREFIX ?= autodelete7d/spark/test-`date +%Y%m%d-%H%M%S`-`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1`
-SPARK_REPO_URL ?= git@github.com:apache/spark.git#v2.4.0
+SPARK_REPO_URL ?= git@github.com:apache/spark.git
+SPARK_VERSION ?= 2.4.0
 
 .ONESHELL:
 SHELL := /bin/bash
@@ -31,27 +32,30 @@ manifest-dist:
 root-dir:
 	echo $(ROOT_DIR)
 
-HADOOP_VERSION ?= $(shell jq ".default_spark_dist.hadoop_version" "$(ROOT_DIR)/manifest.json")
+HADOOP_VERSION ?= 3.1
+#$(shell jq ".default_spark_dist.hadoop_version" "$(ROOT_DIR)/manifest.json")
+
 SPARK_DIR ?= $(ROOT_DIR)/spark
 
 prod-dist:
-	git clone $(SPARK_REPO_URL) $(SPARK_DIR)
-	pushd $(SPARK_DIR)
-	rm -rf spark-*.tgz
-	./dev/make-distribution.sh --tgz -Pmesos "-Phadoop-$(HADOOP_VERSION)" -Pnetlib-lgpl -Psparkr -Phive -Phive-thriftserver -DskipTests -Phadoop-cloud
-	filename=`ls spark-*.tgz`
-	rm -rf $(DIST_DIR)
-	mkdir -p $(DIST_DIR)
-	mv $${filename} $(DIST_DIR)
+	rm -rf $(SPARK_DIR)
+	git clone --branch v$(SPARK_VERSION) $(SPARK_REPO_URL) $(SPARK_DIR)
+	rm -rf $(SPARK_DIR)/spark-*.tgz
+	pushd $(SPARK_DIR) && \
+	./dev/make-distribution.sh --tgz -Pmesos "-Phadoop-$(HADOOP_VERSION)" -Pnetlib-lgpl -Psparkr -DskipTests -Phadoop-cloud && \
+	filename=`ls spark-*.tgz` && \
+	rm -rf $(DIST_DIR) && \
+	mkdir -p $(DIST_DIR) && \
+	mv $${filename} $(DIST_DIR) && \
 	echo "Built: $(DIST_DIR)/$${filename}"
 
 # If build/dist/ doesn't exist, creates it and downloads the spark build in manifest.json.
 # To instead use a locally built version of spark, you must run "make prod-dist".
 SPARK_DIST_URI ?= $(shell jq ".default_spark_dist.uri" "$(ROOT_DIR)/manifest.json")
 $(DIST_DIR):
-	mkdir -p $(DIST_DIR)
-	pushd $(DIST_DIR)
-	wget $(SPARK_DIST_URI)
+	mkdir -p $(DIST_DIR) && \
+	pushd $(DIST_DIR) && \
+	wget $(SPARK_DIST_URI) && \
 	popd
 
 clean-dist:
@@ -61,27 +65,18 @@ clean-dist:
 docker-login:
 	docker login --username="$(DOCKER_USERNAME)" --password="$(DOCKER_PASSWORD)"
 
-DOCKER_DIST_IMAGE ?= $(SPARK_DEV_DOCKER_IMAGE):$(GIT_COMMIT)
-docker-dist: $(DIST_DIR)
-	SPARK_BUILDS=`ls $(DIST_DIR)/spark-*.tgz || exit 0`
-	if [ `echo "$${SPARK_BUILDS}" | wc -w` == 1 ]; then
-		echo "Using spark: $${SPARK_BUILDS}"
-	else
-		echo "Should have a single Spark package in $(DIST_DIR), found: $${SPARK_BUILDS}"
-		echo "Delete the ones you don't want?"
-		exit 1
-	fi
+DOCKER_DIST_IMAGE ?= $(SPARK_DEV_DOCKER_IMAGE):$(SPARK_VERSION)_$(HADOOP_VERSION)
+docker-dist:
+	SPARK_BUILDS=`ls $(DIST_DIR)/spark-*.tgz || exit 0` && \
+	if [ `echo "$${SPARK_BUILDS}" | wc -w` == 1 ]; then echo "Using spark: $${SPARK_BUILDS}" ; else	echo "Should have a single Spark package in $(DIST_DIR), found: $${SPARK_BUILDS}" ; echo "Delete the ones you don't want?" ; exit 1 ; fi && \
 	tar xvf $${SPARK_BUILDS} -C $(DIST_DIR)
-
 	rm -rf $(BUILD_DIR)/docker
 	mkdir -p $(BUILD_DIR)/docker/dist
 	cp -r $(DIST_DIR)/spark-*/. $(BUILD_DIR)/docker/dist
 	cp -r conf/* $(BUILD_DIR)/docker/dist/conf
 	cp -r docker/* $(BUILD_DIR)/docker
 
-	pushd $(BUILD_DIR)/docker
-	docker build -t $(DOCKER_DIST_IMAGE) .
-	popd
+	pushd $(BUILD_DIR)/docker && docker build -t $(DOCKER_DIST_IMAGE) . && popd
 
 	docker push $(DOCKER_DIST_IMAGE)
 	echo "$(DOCKER_DIST_IMAGE)" > $@

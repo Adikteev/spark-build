@@ -43,10 +43,10 @@ RUN apt-get update \
                r-base \
                software-properties-common \
                unzip \
-               python-pip
+               python-pip \
     && rm -rf /var/lib/apt/lists/* /usr/share/doc
 
-RUN apt-get install -y cython
+RUN apt-get update && apt-get install -y cython
 
 # lib mesos
 ENV MESOSPHERE_HOME="/opt/mesosphere"
