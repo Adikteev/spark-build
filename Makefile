@@ -3,7 +3,7 @@ BUILD_DIR := $(ROOT_DIR)/build
 DIST_DIR := $(BUILD_DIR)/distrib
 GIT_COMMIT := $(shell git rev-parse HEAD)
 
-SPARK_DEV_DOCKER_IMAGE ?= jenkins.aktv.io:5000/spark-dev
+SPARK_DEV_DOCKER_IMAGE ?= jenkins.aktv.io:5000/spark_hadoop
 AWS_REGION ?= us-west-2
 S3_BUCKET ?= infinity-artifacts
 # Default to putting artifacts under a random directory, which will get cleaned up automatically:
