@@ -8,8 +8,9 @@ AWS_REGION ?= us-west-2
 S3_BUCKET ?= infinity-artifacts
 # Default to putting artifacts under a random directory, which will get cleaned up automatically:
 S3_PREFIX ?= autodelete7d/spark/test-`date +%Y%m%d-%H%M%S`-`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1`
-SPARK_REPO_URL ?= git@github.com:apache/spark.git
+SPARK_REPO_URL ?= git@github.com:Adikteev/spark.git
 SPARK_VERSION ?= 2.4.0
+SPARK_GIT_TAG ?= 2.4.0-fx1
 
 .ONESHELL:
 SHELL := /bin/bash
@@ -39,7 +40,7 @@ SPARK_DIR ?= $(ROOT_DIR)/spark
 
 prod-dist:
 	rm -rf $(SPARK_DIR)
-	git clone --branch v$(SPARK_VERSION) $(SPARK_REPO_URL) $(SPARK_DIR)
+	git clone --branch v$(SPARK_GIT_TAG) $(SPARK_REPO_URL) $(SPARK_DIR)
 	rm -rf $(SPARK_DIR)/spark-*.tgz
 	pushd $(SPARK_DIR) && \
 	./dev/make-distribution.sh --tgz -Pmesos "-Phadoop-$(HADOOP_VERSION)" -Pnetlib-lgpl -Psparkr -DskipTests -Phadoop-cloud && \
